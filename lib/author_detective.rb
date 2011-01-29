@@ -37,7 +37,7 @@ class AuthorDetective < Detective
       block_expiry timestamp,
       block_reason text,
       user_talkpg_text text,
-      created DATE DEFAULT (datetime('now','localtime')),
+      created DATE DEFAULT (datetime('now','localtime'))
       --FOREIGN KEY(revision_id) REFERENCES irc_wikimedia_org_en_wikipedia(revision_id)    --these foreign keys probably won't be enforced b/c sqlite doesn't include it by default--TODO this foreign table name probably shouldn't be hard coded
 SQL
     end

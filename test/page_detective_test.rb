@@ -18,7 +18,8 @@ class PageDetectiveTest < Test::Unit::TestCase
       ts timestamp(20),
       description text)')
     @clazz = PageDetective
-    @detective = @clazz.new(@db)
+    @queue = []
+    @detective = @clazz.new(@queue)
     @info = [
       'Amar Ben Belgacem',
       'M',

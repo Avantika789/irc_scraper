@@ -27,7 +27,7 @@ class PageDetective < Detective
       talk_id integer,
       page_id integer,
       tags string,
-      created DATE DEFAULT (datetime('now','localtime')),
+      created DATE DEFAULT (datetime('now','localtime'))
       --FOREIGN KEY(revision_id) REFERENCES irc_wikimedia_org_en_wikipedia(revision_id)   --TODO this table name probably shouldn't be hard coded
 SQL
     end

@@ -17,7 +17,8 @@ class AuthorDetectiveTest < Test::Unit::TestCase
       ts timestamp(20),
       description text)')
     @clazz = AuthorDetective
-    @detective = @clazz.new(@db)
+    @queue = []
+    @detective = @clazz.new(@queue)
     @info = [
       "Islam in the Democratic Republic of the Congo",
       "", 410276420, 395536324, "Anna Frodesiak", 12,

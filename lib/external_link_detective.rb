@@ -60,7 +60,7 @@ class ExternalLinkDetective < Detective
       --stuff from google malware--
       screenshot text,
       phishing text,
-      malware text,
+      malware text
       --FOREIGN KEY(revision_id) REFERENCES irc_wikimedia_org_en_wikipedia(revision_id)   --TODO this table name probably shouldnt be hard coded
 
 SQL
@@ -140,35 +140,54 @@ SQL
     true # :)
   end	
   
-  #return either the source, a non text/html contenttype or the httperror class, all as strings
   def find_source(url)
-    #TODO do a check for the size and type-content of it before we pull it
+    #TODO do a check for the size and type-content of it _before_ we pull it
     #binary files we probably don't need to grab and things larger than a certain size we don't want to grab
-    uri = URI.parse(url)
-    
-    http = Net::HTTP.new(uri.host)
+    #uri = URI.parse(url)# this doesn't like wikipeida urls like http://en.wikipedia.org/wiki/Herbert_McCabe|Herbert
+    url_regex = /^(.*?\/\/)([^\/]*)(.*)$/x #break it up like this, we're using urls that URI doesn't parse
+    #deal with links stargin with 'www', if they get entered into wikilinks like that they count!
+    unless url =~ url_regex #TODO this is silly if we're just stripping it off below
+      url = "http://#{url}"
+    end
+    parts = url.scan(url_regex)
+    #p parts
+    host = parts.first[1] #this should not have the protocol, it's the domain name with
+    path = parts.first[2] #this should be at least a '/' and have the entire query
+
+    http = Net::HTTP.new(host)
     resp = nil
-    begin
-      path = uri.path.to_s.empty? ? '/' : "#{uri.path}?#{uri.query}"
-      resp = http.request_get(path, 'User-Agent' => 'WikipediaAntiSpamBot/0.1 (+hincapie.cis.upenn.edu)')
-    rescue SocketError => e
-      resp = e
-    end
-    
     ret = []
-    if(resp.is_a? Net::HTTPOK or resp.is_a? Net::HTTPFound)
-      #truncate at 100K characters; not a good way to deal with size, should check the headers only
-      #else set the body to the content type
-      if resp.content_type == 'text/html'
-        ret << resp.body[0..10**5]
+    begin
+      #puts host + path
+      resp = http.request_get(
+        path.empty? ? '/' : path, #deal with no trailing slash
+        'User-Agent' => 'WikipediaAntiSpamBot/0.1 (+hincapie.cis.upenn.edu)'
+      )
+
+      if(resp.is_a? Net::HTTPOK or resp.is_a? Net::HTTPFound)
+        #truncate at 100K characters; not a good way to deal with size, should check the headers only
+        #else set the body to the content type
+        if resp.content_type == 'text/html'
+          ret << resp.body[0..10**5]
+        else
+          ret << resp.content_type #for binary files
+        end
       else
-        ret << resp.content_type
+        #puts resp.class
+        ret << resp.class.to_s
       end
-    else #TODO follow redirects!
-      #if it's a bad http response set the body equal to that response
-      ret << resp.class.to_s
+      #shallow convert all keys to lowercased symbols
+      ret << resp.to_hash.inject({}){|memo,(k,v)| memo[k.to_s.downcase.to_sym] = v; memo} #the headers
+    rescue Net::HTTPBadResponse, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ECONNREFUSED, SocketError,
+           Timeout::Error, Errno::EINVAL, EOFError, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e #Net::HTTPExceptions also?
+      ret << e.class.to_s
+      ret << {}
+    rescue Exception => e
+      #for some reason we're not catching all errors in the bot that calls this
+      # so try capturing all exotic exceptions and reclassifying them as stock exceptions
+      raise Exception.new(e.to_s)
     end
-    ret << resp.to_hash #the headers
+
     ret
   end
   
