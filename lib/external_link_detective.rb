@@ -100,10 +100,11 @@ SQL
       #all of andrews malware code needs to be in the same directory as this file,
       #it doesn't run the command properly when you try to call the file with the pathname
       malware_info = find_malware_info(link)
+      encoded = headers[:'content-encoding'] ? ['gzip', 'deflate', 'compress'].include?(headers[:'content-encoding'].first) : false
       
       results << { 
         :link => arr.first, 
-        :source => ['gzip', 'deflate', 'compress'].include?(headers['Content-encoding']) ? 'encoded' : source_content_error, 
+        :source => encoded ? 'encoded' : source_content_error, 
         :description => arr.last, 
         :headers => headers_str,
         :linkinfo => linkinfo,
@@ -151,9 +152,10 @@ SQL
     end
     parts = url.scan(url_regex)
     #p parts
-    host = parts.first[1] #this should not have the protocol, it's the domain name with
-    path = parts.first[2] #this should be at least a '/' and have the entire query
 
+    host = parts.first[1] #this should not have the protocol, it's the domain name with 
+    path = parts.first[2] #this should be at least a '/' and have the entire query
+    
     http = Net::HTTP.new(host)
     resp = nil
     ret = []
@@ -163,7 +165,6 @@ SQL
         path.empty? ? '/' : path, #deal with no trailing slash
         'User-Agent' => 'WikipediaAntiSpamBot/0.1 (+hincapie.cis.upenn.edu)'
       )
-
       if(resp.is_a? Net::HTTPOK or resp.is_a? Net::HTTPFound)
         #truncate at 100K characters; not a good way to deal with size, should check the headers only
         #else set the body to the content type
@@ -178,16 +179,18 @@ SQL
       end
       #shallow convert all keys to lowercased symbols
       ret << resp.to_hash.inject({}){|memo,(k,v)| memo[k.to_s.downcase.to_sym] = v; memo} #the headers
-    rescue Net::HTTPBadResponse, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ECONNREFUSED, SocketError,
+
+    rescue Net::HTTPBadResponse, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ECONNREFUSED, SocketError, 
            Timeout::Error, Errno::EINVAL, EOFError, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e #Net::HTTPExceptions also?
-      ret << e.class.to_s
+      ret << e.class.to_s 
       ret << {}
     rescue Exception => e
       #for some reason we're not catching all errors in the bot that calls this
       # so try capturing all exotic exceptions and reclassifying them as stock exceptions
-      raise Exception.new(e.to_s)
-    end
 
+      raise Exception.new(e.to_s) 
+    end
+    
     ret
   end
   
